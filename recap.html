@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025 RECAP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+            background-color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        #recap-canvas {
+            width: 100%;
+            max-width: 360px;
+            background: white;
+            padding: 24px;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .recap-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: bold;
+            background-color: #fce7f3;
+            color: #ec4899;
+            padding: 2px 10px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+
+        .img-container {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #f8fafc;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .zoom-control {
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            width: 100%;
+            display: none;
+            accent-color: #ec4899;
+        }
+        .has-img + .zoom-control { display: block; }
+
+        /* --- 저장 모드(capture-mode) 전용 스타일 --- */
+        .capture-mode .zoom-control, 
+        .capture-mode .btn-ui-only { 
+            display: none !important; 
+        }
+        
+        /* [수정] 2025 RECAP + 닉네임 영역 5px 위로 이동 */
+        .capture-mode #header-text-area {
+            transform: translateY(-5px) !important;
+        }
+
+        /* [수정] 명대사 아이콘(")은 고정, 라벨 텍스트만 10px 위로 이동 */
+        .capture-mode #quote-label {
+            display: inline-block;
+            transform: translateY(-5px) !important;
+        }
+
+        /* 명대사 본문 박스 5px 위로 이동 */
+        .capture-mode #quote-content-box {
+            transform: translateY(-5px) !important;
+        }
+
+        /* 텍스트 세부 보정 */
+        .capture-mode .recap-label span {
+            transform: translateY(-2.5px) !important;
+        }
+        .capture-mode .capture-text {
+            display: flex !important;
+            align-items: center !important;
+            height: 100% !important;
+            line-height: 1 !important;
+            transform: translateY(-0.5px) !important;
+        }
+
+        input, textarea {
+            background: transparent; border: none; outline: none;
+            width: 100%; padding: 0; font-family: inherit; color: inherit;
+        }
+        textarea { resize: none; overflow: hidden; }
+
+        .btn-save {
+            margin-bottom: 24px; background: #0f172a; color: white;
+            padding: 12px 32px; border-radius: 9999px; font-size: 14px;
+            font-weight: bold; display: flex; align-items: center; gap: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <button onclick="captureImage()" class="btn-save">
+        <i data-lucide="download" class="w-4 h-4"></i> 이미지로 저장하기
+    </button>
+
+    <div id="recap-canvas">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-pink-50 rounded-full -mr-16 -mt-16 z-0 opacity-60"></div>
+        
+        <div class="relative z-10 flex items-center gap-3 border-b border-slate-50 pb-4">
+            <label class="relative w-14 h-14 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden cursor-pointer flex-shrink-0">
+                <div id="profile-preview" class="img-container"></div>
+                <div id="profile-placeholder" class="absolute inset-0 flex items-center justify-center text-slate-300">
+                    <i data-lucide="user" class="w-6 h-6"></i>
+                </div>
+                <input type="file" class="hidden" onchange="previewImg(this, 'profile-preview', 'profile-placeholder')">
+            </label>
+            <div id="header-text-area" class="flex flex-col flex-grow text-left transition-transform">
+                <span class="text-[7px] font-black text-pink-400 tracking-widest uppercase mb-0.5">2025 RECAP</span>
+                <input type="text" class="text-lg font-black text-slate-800 leading-none" placeholder="닉네임을 입력해주세요">
+            </div>
+        </div>
+
+        <div class="relative z-10 text-left">
+            <div class="flex items-center justify-end mb-1 btn-ui-only">
+                <button onclick="toggleSection('encounter-wrapper', this)" class="text-[8px] font-bold text-slate-300 flex items-center gap-1">
+                    <i data-lucide="eye" class="w-2.5 h-2.5"></i> <span>숨기기</span>
+                </button>
+            </div>
+            <div id="encounter-wrapper" class="flex flex-col gap-1.5">
+                <div class="recap-label bg-slate-900 text-white w-fit"><span>입덕계기</span></div>
+                <div class="flex flex-col gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-100 mb-1">
+                    <label class="relative w-full aspect-[21/9] bg-white border border-slate-100 rounded-lg overflow-hidden cursor-pointer flex items-center justify-center">
+                        <div id="enc-preview" class="img-container"></div>
+                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
+                        <input type="file" class="hidden" onchange="previewImg(this, 'enc-preview')">
+                    </label>
+                    <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('enc-preview', this.value)">
+                    <div class="h-6 flex items-center justify-center">
+                        <textarea class="text-[9px] italic text-slate-400 text-center font-medium leading-tight" rows="1" placeholder="우리가 처음 만난 그 순간..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4 relative z-10 text-left mb-1">
+            <div class="flex flex-col relative">
+                <div class="recap-label w-fit mb-1"><span>올해의 떡밥 (1)</span></div>
+                <label class="w-full aspect-[16/9] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                    <div id="bait1-preview" class="img-container"></div>
+                    <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
+                    <input type="file" class="hidden" onchange="previewImg(this, 'bait1-preview')">
+                </label>
+                <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('bait1-preview', this.value)">
+            </div>
+            <div class="flex flex-col relative">
+                <div class="recap-label w-fit mb-1"><span>올해의 떡밥 (2)</span></div>
+                <label class="w-full aspect-[16/9] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                    <div id="bait2-preview" class="img-container"></div>
+                    <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
+                    <input type="file" class="hidden" onchange="previewImg(this, 'bait2-preview')">
+                </label>
+                <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('bait2-preview', this.value)">
+            </div>
+        </div>
+
+        <div class="relative z-10 text-left">
+            <div class="flex items-center gap-1 mb-2 text-slate-300 font-bold text-[8px] uppercase tracking-tighter">
+                <i data-lucide="quote" class="w-2.5 h-2.5 text-pink-300 fill-pink-300"></i> 
+                <span id="quote-label" class="pt-0.5 transition-transform">올해의 명대사</span>
+            </div>
+            <div id="quote-content-box" class="bg-white border border-slate-100 rounded-xl min-h-[50px] flex items-center justify-center p-3 relative shadow-sm overflow-hidden transition-transform">
+                <i data-lucide="quote" class="absolute top-1 left-1 w-5 h-5 opacity-5 text-slate-300 -rotate-12"></i>
+                <textarea class="text-center text-[10px] font-bold text-slate-800 italic leading-relaxed z-10 w-full" rows="2" placeholder="텍스트를 입력해주세요"></textarea>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-x-3 gap-y-4 relative z-10 text-left">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col relative">
+                    <div class="recap-label w-fit mb-1"><span>올해의 투샷</span></div>
+                    <label class="w-full aspect-[4/3] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                        <div id="two-preview" class="img-container"></div>
+                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
+                        <input type="file" class="hidden" onchange="previewImg(this, 'two-preview')">
+                    </label>
+                    <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('two-preview', this.value)">
+                </div>
+                <div class="flex flex-col relative">
+                    <div class="recap-label w-fit mb-1"><span>올해의 라이브</span></div>
+                    <label class="w-full aspect-[4/3] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                        <div id="live-preview" class="img-container"></div>
+                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
+                        <input type="file" class="hidden" onchange="previewImg(this, 'live-preview')">
+                    </label>
+                    <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('live-preview', this.value)">
+                </div>
+            </div>
+            <div class="flex flex-col relative">
+                <div class="recap-label w-fit mb-1"><span>올해의 프롬</span></div>
+                <label class="w-full h-full min-h-[90px] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer relative">
+                    <div id="fromm-preview" class="img-container"></div>
+                    <div class="flex flex-col items-center text-slate-300 scale-75 absolute">
+                        <i data-lucide="message-circle" class="w-6 h-6"></i>
+                        <span class="text-[9px] mt-1 font-mono uppercase font-bold">Fromm</span>
+                    </div>
+                    <input type="file" class="hidden" onchange="previewImg(this, 'fromm-preview')">
+                </label>
+                <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('fromm-preview', this.value)">
+            </div>
+        </div>
+
+        <div class="relative z-10 flex justify-between items-end mt-auto pt-3 border-t border-slate-50">
+            <div class="text-[7px] text-slate-200 font-mono tracking-widest uppercase">HQ_LOG_2025</div>
+            <div class="text-[9px] font-black text-slate-100 italic text-right leading-tight uppercase">2025 RECAP</div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function previewImg(input, targetId, placeholderId) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const el = document.getElementById(targetId);
+                    el.style.backgroundImage = `url(${e.target.result})`;
+                    el.classList.add('has-img');
+                    if(placeholderId) document.getElementById(placeholderId).classList.add('hidden');
+                    const icon = el.parentElement.querySelector('i');
+                    if(icon) icon.style.opacity = '0';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function adjustZoom(id, val) {
+            const el = document.getElementById(id);
+            el.style.backgroundSize = `${val}%`;
+        }
+
+        function toggleSection(id, btn) {
+            const el = document.getElementById(id);
+            const isHidden = el.style.display === 'none';
+            el.style.display = isHidden ? 'flex' : 'none';
+            btn.querySelector('span').innerText = isHidden ? '숨기기' : '보이기';
+            btn.querySelector('i').setAttribute('data-lucide', isHidden ? 'eye' : 'eye-off');
+            lucide.createIcons();
+        }
+
+        async function captureImage() {
+            const canvas = document.getElementById('recap-canvas');
+            const inputs = canvas.querySelectorAll('input[type="text"], textarea');
+            const tempReplacements = [];
+
+            inputs.forEach(input => {
+                const replacement = document.createElement('div');
+                replacement.innerText = input.value || input.placeholder;
+                replacement.className = input.className + " capture-text";
+                
+                const styles = window.getComputedStyle(input);
+                replacement.style.cssText = styles.cssText;
+                replacement.style.display = 'flex';
+                replacement.style.alignItems = 'center';
+                replacement.style.justifyContent = styles.textAlign === 'center' ? 'center' : 'flex-start';
+                replacement.style.height = styles.height;
+                
+                input.style.display = 'none';
+                input.parentNode.insertBefore(replacement, input);
+                tempReplacements.push({ input, replacement });
+            });
+
+            canvas.classList.add('capture-mode');
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 150));
+                
+                const result = await html2canvas(canvas, {
+                    scale: 3,
+                    backgroundColor: '#ffffff',
+                    useCORS: true,
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: -window.scrollY
+                });
+                
+                const link = document.createElement('a');
+                link.download = '2025_HQ_RECAP.png';
+                link.href = result.toDataURL('image/png');
+                link.click();
+            } finally {
+                tempReplacements.forEach(({ input, replacement }) => {
+                    input.style.display = '';
+                    replacement.remove();
+                });
+                canvas.classList.remove('capture-mode');
+            }
+        }
+    </script>
+</body>
+</html>
