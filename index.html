@@ -7,7 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Gowun Dodum', sans-serif;
@@ -23,117 +25,117 @@
             max-width: 360px;
             background: white;
             padding: 24px;
-            border-radius: 32px;
-            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.1);
+            border-radius: 36px;
+            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.1);
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
+            margin-bottom: 30px;
         }
 
+        /* 말랑한 핑크 라벨: 이미지처럼 고정된 디자인 */
         .recap-label {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 8px;
-            font-weight: bold;
-            background-color: #fce7f3;
-            color: #ec4899;
-            padding: 2px 10px;
-            border-radius: 9999px;
+            font-size: 8.5px;
+            font-weight: 800;
+            background-color: #fce7f3; /* 연한 핑크 */
+            color: #db2777; /* 진한 핑크 */
+            padding: 4px 12px;
+            border-radius: 10px;
             text-transform: uppercase;
             line-height: 1;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .label-dark { 
+            background-color: #e2e8f0; 
+            color: #475569;
         }
 
         .img-container {
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
             background-color: #f8fafc;
-            position: relative;
             width: 100%;
             height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .zoom-control {
-            position: absolute;
-            bottom: -25px;
-            left: 0;
-            width: 100%;
+        .clickable-text {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clickable-text:hover { opacity: 0.7; }
+
+        /* 편집 모달 및 크로퍼 스타일 */
+        #crop-modal {
             display: none;
-            accent-color: #ec4899;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0,0,0,0.9);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        .has-img + .zoom-control { display: block; }
 
-        /* --- 저장 모드(capture-mode) 전용 스타일 --- */
-        .capture-mode .zoom-control, 
-        .capture-mode .btn-ui-only { 
+        .capture-mode .btn-ui-only,
+        .capture-mode i[data-lucide="camera"],
+        .capture-mode .upload-placeholder { 
             display: none !important; 
         }
-        
-        /* [수정] 2025 RECAP + 닉네임 영역 5px 위로 이동 */
-        .capture-mode #header-text-area {
-            transform: translateY(-5px) !important;
-        }
-
-        /* [수정] 명대사 아이콘(")은 고정, 라벨 텍스트만 10px 위로 이동 */
-        .capture-mode #quote-label {
-            display: inline-block;
-            transform: translateY(-5px) !important;
-        }
-
-        /* 명대사 본문 박스 5px 위로 이동 */
-        .capture-mode #quote-content-box {
-            transform: translateY(-5px) !important;
-        }
-
-        /* 텍스트 세부 보정 */
-        .capture-mode .recap-label span {
-            transform: translateY(-2.5px) !important;
-        }
-        .capture-mode .capture-text {
-            display: flex !important;
-            align-items: center !important;
-            height: 100% !important;
-            line-height: 1 !important;
-            transform: translateY(-0.5px) !important;
-        }
-
-        input, textarea {
-            background: transparent; border: none; outline: none;
-            width: 100%; padding: 0; font-family: inherit; color: inherit;
-        }
-        textarea { resize: none; overflow: hidden; }
 
         .btn-save {
-            margin-bottom: 24px; background: #0f172a; color: white;
-            padding: 12px 32px; border-radius: 9999px; font-size: 14px;
+            background: #0f172a; color: white;
+            padding: 14px 40px; border-radius: 9999px; font-size: 14px;
             font-weight: bold; display: flex; align-items: center; gap: 8px;
             cursor: pointer;
+        }
+
+        #input-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
     </style>
 </head>
 <body>
 
-    <button onclick="captureImage()" class="btn-save">
-        <i data-lucide="download" class="w-4 h-4"></i> 이미지로 저장하기
-    </button>
+    <div id="crop-modal">
+        <div class="w-full max-w-[400px] aspect-square bg-zinc-800 mb-6 overflow-hidden">
+            <img id="crop-target" src="" style="max-width: 100%;">
+        </div>
+        <div class="flex gap-3">
+            <button onclick="closeCropModal()" class="px-8 py-3 bg-zinc-700 text-white rounded-xl font-bold">취소</button>
+            <button onclick="applyCrop()" class="px-8 py-3 bg-pink-500 text-white rounded-xl font-bold">적용하기</button>
+        </div>
+    </div>
 
     <div id="recap-canvas">
         <div class="absolute top-0 right-0 w-32 h-32 bg-pink-50 rounded-full -mr-16 -mt-16 z-0 opacity-60"></div>
         
         <div class="relative z-10 flex items-center gap-3 border-b border-slate-50 pb-4">
-            <label class="relative w-14 h-14 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden cursor-pointer flex-shrink-0">
-                <div id="profile-preview" class="img-container"></div>
-                <div id="profile-placeholder" class="absolute inset-0 flex items-center justify-center text-slate-300">
-                    <i data-lucide="user" class="w-6 h-6"></i>
+            <div onclick="triggerUpload('profile-preview', 1)" class="relative w-14 h-14 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden cursor-pointer flex-shrink-0">
+                <div id="profile-preview" class="img-container">
+                    <i data-lucide="user" class="w-6 h-6 text-slate-300 upload-placeholder"></i>
                 </div>
-                <input type="file" class="hidden" onchange="previewImg(this, 'profile-preview', 'profile-placeholder')">
-            </label>
-            <div id="header-text-area" class="flex flex-col flex-grow text-left transition-transform">
+            </div>
+            <div class="flex flex-col flex-grow text-left clickable-text" onclick="openEditModal('nickname-display', '닉네임', '닉네임을 입력해주세요')">
                 <span class="text-[7px] font-black text-pink-400 tracking-widest uppercase mb-0.5">2025 RECAP</span>
-                <input type="text" class="text-lg font-black text-slate-800 leading-none" placeholder="닉네임을 입력해주세요">
+                <div id="nickname-display" class="text-lg font-black text-slate-800 leading-none">닉네임을 입력해주세요</div>
             </div>
         </div>
 
@@ -144,16 +146,15 @@
                 </button>
             </div>
             <div id="encounter-wrapper" class="flex flex-col gap-1.5">
-                <div class="recap-label bg-slate-900 text-white w-fit"><span>입덕계기</span></div>
+                <div class="recap-label label-dark w-fit"><span>입덕계기</span></div>
                 <div class="flex flex-col gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-100 mb-1">
-                    <label class="relative w-full aspect-[21/9] bg-white border border-slate-100 rounded-lg overflow-hidden cursor-pointer flex items-center justify-center">
-                        <div id="enc-preview" class="img-container"></div>
-                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
-                        <input type="file" class="hidden" onchange="previewImg(this, 'enc-preview')">
-                    </label>
-                    <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('enc-preview', this.value)">
-                    <div class="h-6 flex items-center justify-center">
-                        <textarea class="text-[9px] italic text-slate-400 text-center font-medium leading-tight" rows="1" placeholder="우리가 처음 만난 그 순간..."></textarea>
+                    <div onclick="triggerUpload('enc-preview', 21/9)" class="relative w-full aspect-[21/9] bg-white border border-slate-100 rounded-lg overflow-hidden cursor-pointer flex items-center justify-center">
+                        <div id="enc-preview" class="img-container">
+                            <i data-lucide="camera" class="w-4 h-4 text-slate-200 upload-placeholder"></i>
+                        </div>
+                    </div>
+                    <div class="h-6 flex items-center justify-center clickable-text" onclick="openEditModal('encounter-display', '입덕계기', '우리가 처음 만난 그 순간...')">
+                        <div id="encounter-display" class="text-[9px] italic text-slate-400 text-center font-medium leading-tight">우리가 처음 만난 그 순간...</div>
                     </div>
                 </div>
             </div>
@@ -161,98 +162,175 @@
 
         <div class="grid grid-cols-2 gap-x-3 gap-y-4 relative z-10 text-left mb-1">
             <div class="flex flex-col relative">
-                <div class="recap-label w-fit mb-1"><span>올해의 떡밥 (1)</span></div>
-                <label class="w-full aspect-[16/9] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
-                    <div id="bait1-preview" class="img-container"></div>
-                    <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
-                    <input type="file" class="hidden" onchange="previewImg(this, 'bait1-preview')">
-                </label>
-                <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('bait1-preview', this.value)">
+                <div class="recap-label w-fit mb-1.5"><span>올해의 떡밥 (1)</span></div>
+                <div onclick="triggerUpload('bait1-preview', 16/9)" class="w-full aspect-[16/9] bg-slate-50 border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                    <div id="bait1-preview" class="img-container">
+                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 upload-placeholder"></i>
+                    </div>
+                </div>
             </div>
             <div class="flex flex-col relative">
-                <div class="recap-label w-fit mb-1"><span>올해의 떡밥 (2)</span></div>
-                <label class="w-full aspect-[16/9] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
-                    <div id="bait2-preview" class="img-container"></div>
-                    <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
-                    <input type="file" class="hidden" onchange="previewImg(this, 'bait2-preview')">
-                </label>
-                <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('bait2-preview', this.value)">
+                <div class="recap-label w-fit mb-1.5"><span>올해의 떡밥 (2)</span></div>
+                <div onclick="triggerUpload('bait2-preview', 16/9)" class="w-full aspect-[16/9] bg-slate-50 border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                    <div id="bait2-preview" class="img-container">
+                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 upload-placeholder"></i>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="relative z-10 text-left">
-            <div class="flex items-center gap-1 mb-2 text-slate-300 font-bold text-[8px] uppercase tracking-tighter">
-                <i data-lucide="quote" class="w-2.5 h-2.5 text-pink-300 fill-pink-300"></i> 
-                <span id="quote-label" class="pt-0.5 transition-transform">올해의 명대사</span>
+            <div class="flex items-center gap-1 mb-2 text-slate-400 font-black text-[8px] uppercase tracking-tighter">
+                <i data-lucide="quote" class="w-2.5 h-2.5 text-pink-400 fill-pink-400"></i> 
+                <span>올해의 명대사</span>
             </div>
-            <div id="quote-content-box" class="bg-white border border-slate-100 rounded-xl min-h-[50px] flex items-center justify-center p-3 relative shadow-sm overflow-hidden transition-transform">
+            <div onclick="openEditModal('quote-display', '올해의 명대사', '명대사를 입력해주세요')" class="bg-white border border-slate-100 rounded-xl min-h-[54px] flex items-center justify-center p-3 relative shadow-sm overflow-hidden clickable-text">
                 <i data-lucide="quote" class="absolute top-1 left-1 w-5 h-5 opacity-5 text-slate-300 -rotate-12"></i>
-                <textarea class="text-center text-[10px] font-bold text-slate-800 italic leading-relaxed z-10 w-full" rows="2" placeholder="텍스트를 입력해주세요"></textarea>
+                <div id="quote-display" class="text-center text-[10px] font-bold text-slate-800 italic leading-relaxed z-10 w-full whitespace-pre-wrap">명대사를 입력해주세요</div>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-x-3 gap-y-4 relative z-10 text-left">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col relative">
-                    <div class="recap-label w-fit mb-1"><span>올해의 투샷</span></div>
-                    <label class="w-full aspect-[4/3] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
-                        <div id="two-preview" class="img-container"></div>
-                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
-                        <input type="file" class="hidden" onchange="previewImg(this, 'two-preview')">
-                    </label>
-                    <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('two-preview', this.value)">
+                    <div class="recap-label w-fit mb-1.5"><span>올해의 투샷</span></div>
+                    <div onclick="triggerUpload('two-preview', 4/3)" class="w-full aspect-[4/3] bg-slate-50 border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                        <div id="two-preview" class="img-container">
+                            <i data-lucide="camera" class="w-4 h-4 text-slate-200 upload-placeholder"></i>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex flex-col relative">
-                    <div class="recap-label w-fit mb-1"><span>올해의 라이브</span></div>
-                    <label class="w-full aspect-[4/3] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
-                        <div id="live-preview" class="img-container"></div>
-                        <i data-lucide="camera" class="w-4 h-4 text-slate-200 absolute"></i>
-                        <input type="file" class="hidden" onchange="previewImg(this, 'live-preview')">
-                    </label>
-                    <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('live-preview', this.value)">
+                    <div class="recap-label w-fit mb-1.5"><span>올해의 라이브</span></div>
+                    <div onclick="triggerUpload('live-preview', 4/3)" class="w-full aspect-[4/3] bg-slate-50 border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer">
+                        <div id="live-preview" class="img-container">
+                            <i data-lucide="camera" class="w-4 h-4 text-slate-200 upload-placeholder"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="flex flex-col relative">
-                <div class="recap-label w-fit mb-1"><span>올해의 프롬</span></div>
-                <label class="w-full h-full min-h-[90px] border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer relative">
-                    <div id="fromm-preview" class="img-container"></div>
-                    <div class="flex flex-col items-center text-slate-300 scale-75 absolute">
-                        <i data-lucide="message-circle" class="w-6 h-6"></i>
-                        <span class="text-[9px] mt-1 font-mono uppercase font-bold">Fromm</span>
+                <div class="recap-label w-fit mb-1.5"><span>올해의 프롬</span></div>
+                <div onclick="triggerUpload('fromm-preview', 0.8)" class="w-full h-full min-h-[100px] bg-slate-50 border border-dashed border-gray-200 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer relative">
+                    <div id="fromm-preview" class="img-container">
+                        <div class="flex flex-col items-center text-slate-200 scale-75 upload-placeholder">
+                            <i data-lucide="message-circle" class="w-6 h-6"></i>
+                            <span class="text-[9px] mt-1 font-mono uppercase font-bold">Fromm</span>
+                        </div>
                     </div>
-                    <input type="file" class="hidden" onchange="previewImg(this, 'fromm-preview')">
-                </label>
-                <input type="range" class="zoom-control" min="100" max="300" value="100" oninput="adjustZoom('fromm-preview', this.value)">
+                </div>
             </div>
         </div>
 
         <div class="relative z-10 flex justify-between items-end mt-auto pt-3 border-t border-slate-50">
-            <div class="text-[7px] text-slate-200 font-mono tracking-widest uppercase">HQ_LOG_2025</div>
-            <div class="text-[9px] font-black text-slate-100 italic text-right leading-tight uppercase">2025 RECAP</div>
+            <div class="text-[7px] text-slate-300 font-mono tracking-widest uppercase">HQ_LOG_2025</div>
+            <div class="text-[9px] font-black text-slate-200 italic text-right leading-tight uppercase">2025 RECAP</div>
+        </div>
+    </div>
+
+    <input type="file" id="global-file-input" class="hidden" accept="image/*" onchange="loadToEditor(event)">
+
+    <button onclick="captureImage()" class="btn-save shadow-lg shadow-slate-200">
+        <i data-lucide="download" class="w-4 h-4"></i> 이미지로 저장하기
+    </button>
+
+    <div id="input-modal">
+        <div class="bg-white w-full max-w-xs p-6 rounded-[32px] shadow-2xl flex flex-col gap-5">
+            <h3 id="modal-title" class="text-slate-900 font-black text-center text-base">내용 입력</h3>
+            <textarea id="modal-main-input" rows="4" class="w-full border-2 border-slate-50 rounded-2xl p-4 text-sm bg-slate-50 outline-none focus:border-pink-200"></textarea>
+            <div class="flex gap-2">
+                <button onclick="closeEditModal(false)" class="flex-1 bg-slate-100 text-slate-500 py-3 rounded-xl font-bold text-xs">취소</button>
+                <button onclick="closeEditModal(true)" class="flex-2 bg-pink-500 text-white py-3 px-8 rounded-xl font-bold text-xs">완료</button>
+            </div>
         </div>
     </div>
 
     <script>
         lucide.createIcons();
 
-        function previewImg(input, targetId, placeholderId) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const el = document.getElementById(targetId);
-                    el.style.backgroundImage = `url(${e.target.result})`;
-                    el.classList.add('has-img');
-                    if(placeholderId) document.getElementById(placeholderId).classList.add('hidden');
-                    const icon = el.parentElement.querySelector('i');
-                    if(icon) icon.style.opacity = '0';
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
+        let cropper = null;
+        let currentTargetId = '';
+        let currentAspectRatio = 1;
+
+        // --- 이미지 편집 로직 (Cropper.js) ---
+        function triggerUpload(id, ratio) {
+            currentTargetId = id;
+            currentAspectRatio = ratio;
+            document.getElementById('global-file-input').click();
         }
 
-        function adjustZoom(id, val) {
-            const el = document.getElementById(id);
-            el.style.backgroundSize = `${val}%`;
+        function loadToEditor(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const modal = document.getElementById('crop-modal');
+                const targetImg = document.getElementById('crop-target');
+                targetImg.src = e.target.result;
+                modal.style.display = 'flex';
+
+                if (cropper) cropper.destroy();
+                cropper = new Cropper(targetImg, {
+                    aspectRatio: currentAspectRatio,
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 1,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                });
+            };
+            reader.readAsDataURL(file);
+            event.target.value = ''; // 같은 파일 다시 선택 가능하게
+        }
+
+        function applyCrop() {
+            const canvas = cropper.getCroppedCanvas();
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            const targetDiv = document.getElementById(currentTargetId);
+            
+            targetDiv.style.backgroundImage = `url(${dataUrl})`;
+            targetDiv.innerHTML = ''; // 플레이스홀더 아이콘 제거
+            closeCropModal();
+        }
+
+        function closeCropModal() {
+            document.getElementById('crop-modal').style.display = 'none';
+            if (cropper) cropper.destroy();
+        }
+
+        // --- 텍스트 편집 로직 ---
+        let currentEditingId = '';
+        let currentDefaultText = '';
+
+        function openEditModal(targetId, title, defaultText) {
+            currentEditingId = targetId;
+            currentDefaultText = defaultText;
+            const displayEl = document.getElementById(targetId);
+            const inputEl = document.getElementById('modal-main-input');
+            document.getElementById('modal-title').innerText = title;
+            inputEl.value = (displayEl.innerText === defaultText) ? "" : displayEl.innerText;
+            document.getElementById('input-modal').style.display = 'flex';
+            inputEl.focus();
+        }
+
+        function closeEditModal(isSave) {
+            if (isSave) {
+                const inputVal = document.getElementById('modal-main-input').value.trim();
+                const displayEl = document.getElementById(currentEditingId);
+                if (inputVal !== "") {
+                    displayEl.innerText = inputVal;
+                    displayEl.classList.remove('text-slate-400');
+                    displayEl.classList.add('text-slate-800');
+                } else {
+                    displayEl.innerText = currentDefaultText;
+                    displayEl.classList.add('text-slate-400');
+                }
+            }
+            document.getElementById('input-modal').style.display = 'none';
         }
 
         function toggleSection(id, btn) {
@@ -266,49 +344,19 @@
 
         async function captureImage() {
             const canvas = document.getElementById('recap-canvas');
-            const inputs = canvas.querySelectorAll('input[type="text"], textarea');
-            const tempReplacements = [];
-
-            inputs.forEach(input => {
-                const replacement = document.createElement('div');
-                replacement.innerText = input.value || input.placeholder;
-                replacement.className = input.className + " capture-text";
-                
-                const styles = window.getComputedStyle(input);
-                replacement.style.cssText = styles.cssText;
-                replacement.style.display = 'flex';
-                replacement.style.alignItems = 'center';
-                replacement.style.justifyContent = styles.textAlign === 'center' ? 'center' : 'flex-start';
-                replacement.style.height = styles.height;
-                
-                input.style.display = 'none';
-                input.parentNode.insertBefore(replacement, input);
-                tempReplacements.push({ input, replacement });
-            });
-
             canvas.classList.add('capture-mode');
-
             try {
-                await new Promise(resolve => setTimeout(resolve, 150));
-                
+                await new Promise(resolve => setTimeout(resolve, 400));
                 const result = await html2canvas(canvas, {
                     scale: 3,
-                    backgroundColor: '#ffffff',
+                    backgroundColor: "#ffffff",
                     useCORS: true,
-                    letterRendering: true,
-                    scrollX: 0,
-                    scrollY: -window.scrollY
                 });
-                
                 const link = document.createElement('a');
                 link.download = '2025_HQ_RECAP.png';
                 link.href = result.toDataURL('image/png');
                 link.click();
             } finally {
-                tempReplacements.forEach(({ input, replacement }) => {
-                    input.style.display = '';
-                    replacement.remove();
-                });
                 canvas.classList.remove('capture-mode');
             }
         }
