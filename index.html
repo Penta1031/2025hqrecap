@@ -76,7 +76,19 @@
             cursor: pointer;
         }
 
-        #crop-modal, #input-modal {
+        /* 크롭 모달 레이아웃 수정 */
+        #crop-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0,0,0,0.95);
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #input-modal {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.8); z-index: 100;
             align-items: center; justify-content: center; padding: 20px;
@@ -180,8 +192,29 @@
     <button onclick="captureImage()" class="btn-save shadow-lg"><i data-lucide="download" class="w-4 h-4"></i> 이미지로 저장하기</button>
 
     <input type="file" id="global-file-input" class="hidden" accept="image/*" onchange="loadToEditor(event)">
-    <div id="crop-modal"><div class="w-full max-w-[400px] aspect-square bg-zinc-800 mb-6 overflow-hidden"><img id="crop-target" src="" style="max-width: 100%;"></div><div class="flex gap-3"><button onclick="closeCropModal()" class="px-8 py-3 bg-zinc-700 text-white rounded-xl font-bold">취소</button><button onclick="applyCrop()" class="px-8 py-3 bg-pink-500 text-white rounded-xl font-bold">적용하기</button></div></div>
-    <div id="input-modal"><div class="bg-white w-full max-w-xs p-6 rounded-[32px] shadow-2xl flex flex-col gap-5"><h3 id="modal-title" class="text-slate-900 font-black text-center text-base">내용 입력</h3><textarea id="modal-main-input" rows="4" class="w-full border-2 border-slate-50 rounded-2xl p-4 text-sm bg-slate-50 outline-none focus:border-pink-200"></textarea><div class="flex gap-2"><button onclick="closeEditModal(false)" class="flex-1 bg-slate-100 text-slate-500 py-3 rounded-xl font-bold text-xs">취소</button><button onclick="closeEditModal(true)" class="flex-2 bg-pink-500 text-white py-3 px-8 rounded-xl font-bold text-xs">완료</button></div></div></div>
+
+    <div id="crop-modal">
+        <div class="flex-grow flex items-center justify-center w-full">
+            <div class="w-full max-w-[540px] aspect-square bg-zinc-800 overflow-hidden shadow-2xl">
+                <img id="crop-target" src="" style="max-width: 100%;">
+            </div>
+        </div>
+        <div class="flex gap-4 py-8">
+            <button onclick="closeCropModal()" class="px-6 py-2 bg-zinc-700 text-white rounded-full font-bold text-[10px] uppercase tracking-wider">취소</button>
+            <button onclick="applyCrop()" class="px-6 py-2 bg-pink-500 text-white rounded-full font-bold text-[10px] uppercase tracking-wider">적용하기</button>
+        </div>
+    </div>
+
+    <div id="input-modal">
+        <div class="bg-white w-full max-w-xs p-6 rounded-[32px] shadow-2xl flex flex-col gap-5">
+            <h3 id="modal-title" class="text-slate-900 font-black text-center text-base">내용 입력</h3>
+            <textarea id="modal-main-input" rows="4" class="w-full border-2 border-slate-50 rounded-2xl p-4 text-sm bg-slate-50 outline-none focus:border-pink-200"></textarea>
+            <div class="flex gap-2">
+                <button onclick="closeEditModal(false)" class="flex-1 bg-slate-100 text-slate-500 py-3 rounded-xl font-bold text-xs">취소</button>
+                <button onclick="closeEditModal(true)" class="flex-2 bg-pink-500 text-white py-3 px-8 rounded-xl font-bold text-xs">완료</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         lucide.createIcons();
@@ -227,7 +260,16 @@
                 const targetImg = document.getElementById('crop-target');
                 targetImg.src = e.target.result; document.getElementById('crop-modal').style.display = 'flex';
                 if (cropper) cropper.destroy();
-                cropper = new Cropper(targetImg, { aspectRatio: currentAspectRatio, viewMode: 1 });
+                cropper = new Cropper(targetImg, { 
+                    aspectRatio: currentAspectRatio, 
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 1,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true
+                });
             };
             reader.readAsDataURL(file); event.target.value = '';
         }
